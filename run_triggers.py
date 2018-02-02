@@ -49,7 +49,7 @@ def load_default_auto_runs():
 
 
 def insert_autorun_entries():
-    consumer = KafkaConsumer('runs.start', bootstrap_servers=[os.environ.get("KAFKA_BOOTSTRAP_SERVER", "localhost:9092")])
+    consumer = KafkaConsumer('experiment.register', bootstrap_servers=[os.environ.get("KAFKA_BOOTSTRAP_SERVER", "localhost:9092")])
 
     while True:
         msg = next(consumer)
@@ -57,17 +57,16 @@ def insert_autorun_entries():
         if msg:
             logger.info("Message from Kafka %s", msg.value)
             info = json.loads(msg.value)
-            exp_id = info['experiment_id']
-            run_id = info['run_id']
+            experiment_name = info['experiment_name']
 
             default_auto_runs = load_default_auto_runs()
             auto_job_names = { x['hash'] for x in default_auto_runs }
             name2job = {x['hash'] : x for x in default_auto_runs }
-            already_registered_jobs = { x['hash'] for x in get_current_job_hashes(exp_id)}
+            already_registered_jobs = { x['hash'] for x in get_current_job_hashes(experiment_name)}
             for unregistered_job in auto_job_names - already_registered_jobs:
-                logger.info("Adding job hash %s for experiment %s ", unregistered_job, exp_id)
+                logger.info("Adding job hash %s for experiment %s ", unregistered_job, experiment_name)
                 job_details = name2job[unregistered_job]
-                register_new_job_hash(exp_id, job_details)
+                register_new_job_hash(experiment_name, job_details)
 
 
 # Create thread for autorun

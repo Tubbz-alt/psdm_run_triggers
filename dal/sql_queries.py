@@ -1,6 +1,13 @@
 __author__ = 'mshankar@slac.stanford.edu'
 
 # Add all your SQL queries (if any) in this file.
+
+QUERY_SELECT_EXPERIMENT_ID_FOR_NAME = """
+SELECT id FROM regdb.experiment WHERE name = %(experiment_name)s
+;
+"""
+
+
 QUERY_SELECT_JOB_HASHES_FOR_EXPERIMENT = """
 SELECT
     hash AS hash,
