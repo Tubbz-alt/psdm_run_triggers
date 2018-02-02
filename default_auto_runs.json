@@ -1,0 +1,10 @@
+[
+{
+  "hash": "#submit_offbyone",
+  "executable": "/reg/g/psdm/utils/arp/offbyone",
+  "parameters": "",
+  "auto_run": "checked",
+  "auto_run_user": "koglin",
+  "location": "SLAC"
+}
+]
