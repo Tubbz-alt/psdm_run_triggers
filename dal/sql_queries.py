@@ -36,3 +36,13 @@ VALUES (
   )
 ;
 """
+
+
+QUERY_SELECT_NAME_ID_FOR_NEW_EXPERIMENTS = """
+SELECT id, name
+FROM
+    regdb.experiment
+WHERE id > %(last_known_experiment_id)s
+ORDER BY id
+;
+"""

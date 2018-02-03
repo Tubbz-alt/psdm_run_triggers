@@ -8,7 +8,7 @@ import json
 from context import logbook_db
 
 from dal.sql_queries import QUERY_SELECT_EXPERIMENT_ID_FOR_NAME, QUERY_SELECT_JOB_HASHES_FOR_EXPERIMENT, \
-    QUERY_INSERT_JOB_HASH_FOR_EXPERIMENT
+    QUERY_INSERT_JOB_HASH_FOR_EXPERIMENT, QUERY_SELECT_NAME_ID_FOR_NEW_EXPERIMENTS
 
 __author__ = 'mshankar@slac.stanford.edu'
 
@@ -39,3 +39,12 @@ def register_new_job_hash(experiment_name, job_details):
     with logbook_db.connect() as cursor:
         cursor.execute(QUERY_INSERT_JOB_HASH_FOR_EXPERIMENT, jc)
         return cursor.lastrowid
+
+def get_new_experiments_after_id(last_known_experiment_id):
+    """
+    Get the experiment id and names for experiments after the last known experiment id.
+    Used for publishing Kafka experiment registeration messages
+    """
+    with logbook_db.connect() as cursor:
+        cursor.execute(QUERY_SELECT_NAME_ID_FOR_NEW_EXPERIMENTS, {"last_known_experiment_id": last_known_experiment_id})
+        return list(cursor.fetchall())
