@@ -28,6 +28,6 @@ export ACCESS_LOG_FORMAT='%(h)s %(l)s %({REMOTE_USER}i)s %(t)s "%(r)s" "%(q)s" %
 
 export SERVER_IP_PORT="0.0.0.0:9646"
 
-gunicorn run_triggers:app -b ${SERVER_IP_PORT} --worker-class eventlet --reload \
+exec gunicorn run_triggers:app -b ${SERVER_IP_PORT} --worker-class eventlet --reload \
        --log-level=DEBUG --env DEBUG=TRUE --capture-output --enable-stdio-inheritance \
        --access-logfile - --access-logformat "${ACCESS_LOG_FORMAT}"
