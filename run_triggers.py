@@ -4,10 +4,13 @@ import os
 import sys
 import json
 from kafka import KafkaConsumer, TopicPartition, KafkaProducer
-from threading import Thread, Event
+from threading import Thread
 import eventlet
 import requests
 from pathlib import Path
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
 
 from context import app, logbook_db
 
@@ -75,51 +78,34 @@ def insert_autorun_entries():
 autorun_thread = Thread(target=insert_autorun_entries)
 autorun_thread.start()
 
-class ExperimentRegistrationTaskThread(Thread):
-    """ Create a thread that polls the database for new experiments and publishes experiment registrations.
-    We store the state in a file that is read each Timer.
-    """
-    def __init__(self, interval):
-        Thread.__init__(self)
-        self._finished = Event()
-        self._interval = interval
+def check_and_publish_new_experiments():
+    '''Poll the database for new experiments and publishes new experiment registrations.
+    We store the last published experiment in a file that is read each timer tick'''
+    try:
+        last_exp_file = Path(os.environ["LAST_PUBLISHED_EXPERIMENT_FILE"])
+        last_published_experiment_id = int(last_exp_file.read_text())
+        new_experiments = get_new_experiments_after_id(last_published_experiment_id)
+        if new_experiments:
+            kafka_producer = KafkaProducer(bootstrap_servers=[os.environ.get("KAFKA_BOOTSTRAP_SERVER", "localhost:9092")], value_serializer=lambda m: json.dumps(m).encode('ascii'))
+            for new_experiment in new_experiments:
+                try:
+                    experiment_name = new_experiment["name"]
+                    experiment_id = new_experiment["id"]
+                    kafka_producer.send('experiment.register', { "experiment_name": experiment_name, "experiment_id": experiment_id })
+                    logger.info("Published Kafka message for experiment %s name %s", experiment_id, experiment_name)
+                    last_exp_file.write_text(str(experiment_id))
+                    logger.info("Updated last published experiment file for experiment %s name %s", experiment_id, experiment_name)
+                except Exception as e:
+                    logger.exception("Exception publishing new experiment", e)
+                    pass
+            kafka_producer.close()
+    except Exception:
+        logger.exception("Exception processing new experiment registration")
+        pass
 
-    def shutdown(self):
-        """Stop this thread"""
-        self._finished.set()
-
-    def run(self):
-        while 1:
-            if self._finished.isSet(): return
-            self.task()
-            self._finished.wait(self._interval)
-
-    def task(self):
-        try:
-            last_exp_file = Path(os.environ["LAST_PUBLISHED_EXPERIMENT_FILE"])
-            last_published_experiment_id = int(last_exp_file.read_text())
-            new_experiments = get_new_experiments_after_id(last_published_experiment_id)
-            if new_experiments:
-                kafka_producer = KafkaProducer(bootstrap_servers=[os.environ.get("KAFKA_BOOTSTRAP_SERVER", "localhost:9092")], value_serializer=lambda m: json.dumps(m).encode('ascii'))
-                for new_experiment in new_experiments:
-                    try:
-                        experiment_name = new_experiment["name"]
-                        experiment_id = new_experiment["id"]
-                        kafka_producer.send('experiment.register', { "experiment_name": experiment_name, "experiment_id": experiment_id })
-                        logger.info("Published Kafka message for experiment %s name %s", experiment_id, experiment_name)
-                        last_exp_file.write_text(str(experiment_id))
-                        logger.info("Updated last published experiment file for experiment %s name %s", experiment_id, experiment_name)
-                    except Exception as e:
-                        logger.exception("Exception publishing new experiment", e)
-                        pass
-                kafka_producer.close()
-        except Exception:
-            logger.exception("Exception processing new experiment registration")
-            pass
-
-experiment_registration_thread = ExperimentRegistrationTaskThread(60.0)
-experiment_registration_thread.start()
-
+scheduler = BackgroundScheduler()
+scheduler.add_job(check_and_publish_new_experiments, 'interval', seconds=60, id="check_and_publish_new_experiments")
+scheduler.start()
 
 if __name__ == '__main__':
     print("Please use gunicorn for development as well.")

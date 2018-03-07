@@ -1,7 +1,7 @@
 #!/bin/bash
 
-export PATH=/reg/g/psdm/sw/conda/inst/miniconda2-prod-rhel7/bin:${PATH}
-source activate /reg/g/psdm/web/ws/prod/virtualenvs/Feb2018
+source /reg/g/psdm/sw/dmconda/etc/profile.d/conda.sh
+conda activate psdm_ws_0_0_1
 
 [ -z "$LOGBOOK_DATABASE_HOST" ] && export LOGBOOK_DATABASE_HOST="localhost"
 [ -z "$LOGBOOK_DATABASE_DB" ] && export LOGBOOK_DATABASE_DB="ROLES"
