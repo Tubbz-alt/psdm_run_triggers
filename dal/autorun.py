@@ -13,9 +13,13 @@ from dal.sql_queries import QUERY_SELECT_EXPERIMENT_ID_FOR_NAME, QUERY_SELECT_JO
 __author__ = 'mshankar@slac.stanford.edu'
 
 def get_experiment_id_for_name(experiment_name):
-    with logbook_db.connect() as cursor:
-        cursor.execute(QUERY_SELECT_EXPERIMENT_ID_FOR_NAME, {"experiment_name": experiment_name})
-        return int(cursor.fetchone()['id'])
+    try:
+        conn = logbook_db.connect()
+        with conn as cursor:
+            cursor.execute(QUERY_SELECT_EXPERIMENT_ID_FOR_NAME, {"experiment_name": experiment_name})
+            return int(cursor.fetchone()['id'])
+    finally:
+        conn.close()
 
 
 def get_current_job_hashes(experiment_name):
@@ -25,9 +29,13 @@ def get_current_job_hashes(experiment_name):
     :return: List of batch job hashes for this instrument.
     """
     experiment_id = get_experiment_id_for_name(experiment_name)
-    with logbook_db.connect() as cursor:
-        cursor.execute(QUERY_SELECT_JOB_HASHES_FOR_EXPERIMENT, {"experiment_id": experiment_id})
-        return cursor.fetchall()
+    try:
+        conn = logbook_db.connect()
+        with conn as cursor:
+            cursor.execute(QUERY_SELECT_JOB_HASHES_FOR_EXPERIMENT, {"experiment_id": experiment_id})
+            return cursor.fetchall()
+    finally:
+        conn.close()
 
 def register_new_job_hash(experiment_name, job_details):
     """
@@ -36,15 +44,23 @@ def register_new_job_hash(experiment_name, job_details):
     experiment_id = get_experiment_id_for_name(experiment_name)
     jc = {"experiment_id": experiment_id}
     jc.update(job_details)
-    with logbook_db.connect() as cursor:
-        cursor.execute(QUERY_INSERT_JOB_HASH_FOR_EXPERIMENT, jc)
-        return cursor.lastrowid
+    try:
+        conn = logbook_db.connect()
+        with conn as cursor:
+            cursor.execute(QUERY_INSERT_JOB_HASH_FOR_EXPERIMENT, jc)
+            return cursor.lastrowid
+    finally:
+        conn.close()
 
 def get_new_experiments_after_id(last_known_experiment_id):
     """
     Get the experiment id and names for experiments after the last known experiment id.
     Used for publishing Kafka experiment registeration messages
     """
-    with logbook_db.connect() as cursor:
-        cursor.execute(QUERY_SELECT_NAME_ID_FOR_NEW_EXPERIMENTS, {"last_known_experiment_id": last_known_experiment_id})
-        return list(cursor.fetchall())
+    try:
+        conn = logbook_db.connect()
+        with conn as cursor:
+            cursor.execute(QUERY_SELECT_NAME_ID_FOR_NEW_EXPERIMENTS, {"last_known_experiment_id": last_known_experiment_id})
+            return list(cursor.fetchall())
+    finally:
+        conn.close()
